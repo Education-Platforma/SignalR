@@ -1,0 +1,58 @@
+﻿@* @page "/Rooms/{RoomId}"
+
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+<h3>Group : @RoomId </h3>
+
+@code {
+    [Parameter]
+    public string RoomId { get; set; }
+
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
+            .Build();
+
+        await hubConnection.StartAsync();
+        await hubConnection.InvokeAsync("JoinVideoRoom", RoomId);
+    }
+
+    private void GetMessageFromGroup(string username, string message)
+    {
+        var encodedMsg = $"{username} : {message}";
+        messages.Add(encodedMsg);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SendToGroup()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("SendToGroupMessage", GroupName, userInput, messageInput);
+        }
+        else
+        {
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
+                .Build();
+        }
+    }
+
+    public bool IsConnected =>
+        hubConnection?.State == HubConnectionState.Connected;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}
+ *@
